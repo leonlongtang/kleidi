@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-// node --test needs the .ts extension; tsconfig lacks allowImportingTsExtensions (TS5097).
-// @ts-expect-error TS5097
 import { getProcedure, AFM_PROCEDURE_ID } from "./afm.ts";
 
 function load() {
