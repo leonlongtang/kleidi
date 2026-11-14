@@ -1,9 +1,11 @@
 // The tools Gemini can call. Each one emits step events for the side panel and returns plain JSON to the model.
 import type { FunctionDeclaration } from "@google/genai";
 import type { KleidiEvent } from "../events.ts";
-import { getProcedure } from "../procedure/afm.ts";
+import { fillApplication } from "../browser/browser.ts";
+import { fieldFills } from "../browser/values.ts";
+import { afmProcedure, getProcedure } from "../procedure/afm.ts";
 import { ai, MODEL } from "./model.ts";
-import { checklistFor } from "./profile.ts";
+import { checklistFor, isComplete } from "./profile.ts";
 import { ExtractionJsonSchema, parseContact, parseExtraction } from "./schemas.ts";
 import type { Session } from "./session.ts";
 
@@ -43,6 +45,28 @@ export const declarations: FunctionDeclaration[] = [
         mobile: { type: "string", description: "With country code, e.g. +30 690 000 0000" },
       },
       required: ["street", "number", "postcode", "city", "email", "mobile"],
+    },
+  },
+  {
+    name: "fill_application",
+    description:
+      "Fill in the AFM application on the tax portal from the saved profile, in a visible browser. Stops before submitting; the user submits.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        notes: {
+          type: "array",
+          description: "Optional personalised one-liners shown next to a field's explanation.",
+          items: {
+            type: "object",
+            properties: {
+              field_id: { type: "string", enum: afmProcedure.fields.map((f) => f.id) },
+              note: { type: "string" },
+            },
+            required: ["field_id", "note"],
+          },
+        },
+      },
     },
   },
 ];
@@ -102,6 +126,7 @@ export async function runTool(name: string, args: Result, s: Session, emit: Emit
       }
       if (doc.value.kind === "passport") s.profile.passport = doc.value;
       else s.profile.permit = doc.value;
+      s.uploads[doc.value.kind] = image;
       const label = doc.value.kind === "passport" ? "Passport read" : "Residence permit read";
       step("done", label, `${doc.value.surname}, ${doc.value.givenNames} · valid to ${doc.value.dateOfExpiry}`);
       emit({ type: "checklist", ...checklistFor(s.profile) });
@@ -118,6 +143,35 @@ export async function runTool(name: string, args: Result, s: Session, emit: Emit
       step("done", "Address and contact details saved", `${c.value.street} ${c.value.number}, ${c.value.postcode} ${c.value.city}`);
       emit({ type: "checklist", ...checklistFor(s.profile) });
       return { ok: true };
+    }
+
+    case "fill_application": {
+      if (!isComplete(s.profile)) return { error: "Profile incomplete: read both documents and save_details first." };
+      const notes = Object.fromEntries(
+        (Array.isArray(args.notes) ? args.notes : []).map((n: { field_id?: unknown; note?: unknown }) => [String(n.field_id), String(n.note)]),
+      );
+      const uploads = Object.fromEntries(
+        Object.entries(s.uploads).map(([kind, img]) => [
+          kind,
+          { name: `${kind.replace("_", "-")}.${img.mimeType.split("/")[1]}`, mimeType: img.mimeType, buffer: Buffer.from(img.data, "base64") },
+        ]),
+      );
+      const fills = fieldFills(s.profile);
+      try {
+        await fillApplication(fills, uploads, notes, emit);
+      } catch (err) {
+        step("error", "The portal form couldn't be filled", (err as Error).message);
+        return { error: (err as Error).message };
+      }
+      const { passport: pp, contact: c } = s.profile;
+      emit({
+        type: "awaitingSubmit",
+        summary:
+          `Application for an AFM as a foreign tax resident (§3.1.2): ${pp!.givenNames} ${pp!.surname}, ${pp!.nationality} national, ` +
+          `passport ${pp!.passportNumber} and residence permit attached, address ${c!.street} ${c!.number}, ${c!.postcode} ${c!.city}, ` +
+          `email ${c!.email}. Nothing is sent until you press Submit.`,
+      });
+      return { ok: true, filled: fills.filter((f) => f.value).map((f) => f.field.id), awaiting: "user presses Submit" };
     }
 
     default:

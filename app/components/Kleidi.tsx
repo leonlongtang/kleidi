@@ -36,15 +36,13 @@ export default function Kleidi() {
   const [sessionId] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
 
-  const send = async (text: string, images: string[]) => {
-    dispatch({ kind: "user", text, images });
-    if (demo) return;
+  const stream = async (url: string, body: object) => {
     setBusy(true);
     try {
-      const res = await fetch("/api/agent", {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, text, images }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(await res.text());
       await streamEvents(res, (event) => dispatch({ kind: "event", event }));
@@ -53,6 +51,11 @@ export default function Kleidi() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const send = async (text: string, images: string[]) => {
+    dispatch({ kind: "user", text, images });
+    if (!demo) await stream("/api/agent", { sessionId, text, images });
   };
 
   useEffect(() => {
@@ -65,8 +68,8 @@ export default function Kleidi() {
   const onSubmit = () => {
     if (submitted) return;
     setSubmitted(true);
-    // Until the orchestrator lands, only the demo knows what happens after Submit.
     if (demo) cancel.current = play(submitIndex + 1, DEMO_EVENTS.length, dispatch);
+    else void stream("/api/submit", {});
   };
 
   return (
@@ -82,6 +85,7 @@ export default function Kleidi() {
           messages={state.messages}
           scrollKey={`${state.messages.length}|${!!state.checklist}|${state.awaitingSubmit}|${!!state.done}`}
           onSend={send}
+          busy={busy}
         >
           {state.checklist && <ChecklistCard checklist={state.checklist} />}
           {state.awaitingSubmit && (

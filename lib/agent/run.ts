@@ -15,7 +15,9 @@ Flow:
 3. Once both documents are read, ask in one message for their Greek home address (street, number, postcode, city;
    it decides their tax office), email and mobile. When they answer, call save_details. If it reports errors,
    ask only for what is wrong.
-4. When everything is saved, say the application is ready to fill in.
+4. As soon as save_details succeeds, call fill_application once. In its notes, add one short personalised line
+   where it helps, e.g. for address_postcode which tax office area her postcode points to (no office names you
+   are unsure of). Then tell her to read the summary and press Submit herself; never claim it is submitted.
 Only if there is no residence permit: mention the procedure's pending-permit gotcha in one line.`;
 
 const MAX_ROUNDS = 8;
