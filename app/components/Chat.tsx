@@ -93,10 +93,22 @@ export default function Chat({ messages, onSend, scrollKey, children }: Props) {
             capture
             multiple
             className="hidden"
-            onChange={(e) => {
+            onChange={async (e) => {
               const files = Array.from(e.target.files ?? []);
-              setImages((xs) => [...xs, ...files.map((f) => URL.createObjectURL(f))]);
               e.target.value = "";
+              // data URLs, not blob: URLs, so the server can read them
+              const urls = await Promise.all(
+                files.map(
+                  (f) =>
+                    new Promise<string>((resolve, reject) => {
+                      const r = new FileReader();
+                      r.onload = () => resolve(String(r.result));
+                      r.onerror = () => reject(r.error);
+                      r.readAsDataURL(f);
+                    }),
+                ),
+              );
+              setImages((xs) => [...xs, ...urls]);
             }}
           />
           <button

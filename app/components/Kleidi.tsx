@@ -3,6 +3,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { addUserMessage, applyEvent, DEMO_EVENTS, initialState, type KleidiEvent, type UiState } from "../../lib/events";
+import { streamEvents } from "../../lib/sse";
 import Chat from "./Chat";
 import ChecklistCard from "./ChecklistCard";
 import StepPanel from "./StepPanel";
@@ -32,6 +33,27 @@ export default function Kleidi() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const cancel = useRef<() => void>(() => {});
   const [submitted, setSubmitted] = useState(false);
+  const [sessionId] = useState(() => crypto.randomUUID());
+  const [busy, setBusy] = useState(false);
+
+  const send = async (text: string, images: string[]) => {
+    dispatch({ kind: "user", text, images });
+    if (demo) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, text, images }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await streamEvents(res, (event) => dispatch({ kind: "event", event }));
+    } catch (err) {
+      dispatch({ kind: "event", event: { type: "message", text: `Couldn't reach Kleidi: ${(err as Error).message}` } });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!demo) return;
@@ -53,12 +75,13 @@ export default function Kleidi() {
         <header className="flex items-baseline gap-2 border-b border-zinc-200 bg-white px-4 py-3">
           <span className="text-lg font-semibold">Kleidi</span>
           <span className="text-sm text-zinc-500">your Greek tax number, sorted</span>
+          {busy && <span className="ml-auto animate-pulse text-xs text-zinc-500">working…</span>}
           {demo && <span className="ml-auto rounded bg-amber-100 px-2 text-xs text-amber-800">demo</span>}
         </header>
         <Chat
           messages={state.messages}
           scrollKey={`${state.messages.length}|${!!state.checklist}|${state.awaitingSubmit}|${!!state.done}`}
-          onSend={(text, images) => dispatch({ kind: "user", text, images })}
+          onSend={send}
         >
           {state.checklist && <ChecklistCard checklist={state.checklist} />}
           {state.awaitingSubmit && (
