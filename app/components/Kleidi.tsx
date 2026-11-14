@@ -85,6 +85,7 @@ export default function Kleidi() {
           messages={state.messages}
           scrollKey={`${state.messages.length}|${!!state.checklist}|${state.awaitingSubmit}|${!!state.done}`}
           onSend={send}
+          busy={busy}
         >
           {state.checklist && <ChecklistCard checklist={state.checklist} />}
           {state.awaitingSubmit && (

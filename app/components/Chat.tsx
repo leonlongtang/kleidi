@@ -10,9 +10,11 @@ type Props = {
   scrollKey: string;
   /** Cards rendered after the messages (checklist, submit, confirmation). */
   children?: ReactNode;
+  /** A turn is running: sending another would race it (two fills on one browser page). */
+  busy?: boolean;
 };
 
-export default function Chat({ messages, onSend, scrollKey, children }: Props) {
+export default function Chat({ messages, onSend, scrollKey, children, busy }: Props) {
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -23,7 +25,7 @@ export default function Chat({ messages, onSend, scrollKey, children }: Props) {
   }, [scrollKey]);
 
   const send = () => {
-    if (!text.trim() && images.length === 0) return;
+    if (busy || (!text.trim() && images.length === 0)) return;
     onSend(text.trim(), images);
     setText("");
     setImages([]);
@@ -124,7 +126,11 @@ export default function Chat({ messages, onSend, scrollKey, children }: Props) {
             placeholder="Type a message…"
             className="min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm"
           />
-          <button type="submit" className="rounded-md bg-zinc-900 px-4 text-sm font-medium text-white">
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-md bg-zinc-900 px-4 text-sm font-medium text-white disabled:opacity-40"
+          >
             Send
           </button>
         </div>
