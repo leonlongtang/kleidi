@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-// Node needs the .ts extension; tsconfig lacks allowImportingTsExtensions (out of scope for this ticket).
-// @ts-expect-error TS5097
 import { addUserMessage, applyEvent, initialState, DEMO_EVENTS, type KleidiEvent } from "./events.ts";
 
 const run = (events: KleidiEvent[]) => events.reduce(applyEvent, initialState);
