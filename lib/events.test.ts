@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 // Node needs the .ts extension; tsconfig lacks allowImportingTsExtensions (out of scope for this ticket).
 // @ts-expect-error TS5097
-import { applyEvent, initialState, DEMO_EVENTS, type KleidiEvent } from "./events.ts";
+import { addUserMessage, applyEvent, initialState, DEMO_EVENTS, type KleidiEvent } from "./events.ts";
 
 const run = (events: KleidiEvent[]) => events.reduce(applyEvent, initialState);
 
@@ -51,16 +51,14 @@ test("awaitingSubmit sets the summary; done clears it and keeps the ics url", ()
   assert.deepEqual(s.done, { confirmation: "Booked", icsUrl: "/slot.ics" });
 });
 
-test("addUserMessage interleaves with agent messages", () => {
-  const s = run([{ type: "message", text: "Hi" }]);
-  const s2 = applyEvent(
-    { ...s, messages: [...s.messages, { from: "user", text: "Hello" }] },
-    { type: "message", text: "Welcome" },
-  );
+test("addUserMessage keeps images and interleaves with agent messages", () => {
+  const s = addUserMessage(run([{ type: "message", text: "Hi" }]), "Hello", ["blob:1"]);
+  const s2 = applyEvent(s, { type: "message", text: "Welcome" });
   assert.deepEqual(
     s2.messages.map((m) => m.from),
     ["agent", "user", "agent"],
   );
+  assert.deepEqual(s2.messages[1].images, ["blob:1"]);
 });
 
 test("demo sequence covers every event type and ends with an ics link", () => {

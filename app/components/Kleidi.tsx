@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { applyEvent, DEMO_EVENTS, initialState, type KleidiEvent, type UiState } from "../../lib/events";
+import { addUserMessage, applyEvent, DEMO_EVENTS, initialState, type KleidiEvent, type UiState } from "../../lib/events";
 import Chat from "./Chat";
 import ChecklistCard from "./ChecklistCard";
 import StepPanel from "./StepPanel";
@@ -11,7 +11,7 @@ type Action = { kind: "event"; event: KleidiEvent } | { kind: "user"; text: stri
 
 function reducer(state: UiState, action: Action): UiState {
   if (action.kind === "event") return applyEvent(state, action.event);
-  return { ...state, messages: [...state.messages, { from: "user", text: action.text, images: action.images }] };
+  return addUserMessage(state, action.text, action.images);
 }
 
 const submitIndex = DEMO_EVENTS.findIndex((e) => e.event.type === "awaitingSubmit");
@@ -31,6 +31,7 @@ export default function Kleidi() {
   const demo = useSearchParams().has("demo");
   const [state, dispatch] = useReducer(reducer, initialState);
   const cancel = useRef<() => void>(() => {});
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     if (!demo) return;
@@ -40,6 +41,8 @@ export default function Kleidi() {
   }, [demo]);
 
   const onSubmit = () => {
+    if (submitted) return;
+    setSubmitted(true);
     // Until the orchestrator lands, only the demo knows what happens after Submit.
     if (demo) cancel.current = play(submitIndex + 1, DEMO_EVENTS.length, dispatch);
   };
@@ -54,6 +57,7 @@ export default function Kleidi() {
         </header>
         <Chat
           messages={state.messages}
+          scrollKey={`${state.messages.length}|${!!state.checklist}|${state.awaitingSubmit}|${!!state.done}`}
           onSend={(text, images) => dispatch({ kind: "user", text, images })}
         >
           {state.checklist && <ChecklistCard checklist={state.checklist} />}
@@ -63,7 +67,8 @@ export default function Kleidi() {
               <p className="mb-3">{state.awaitingSubmit}</p>
               <button
                 onClick={onSubmit}
-                className="rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+                disabled={submitted}
+                className="rounded-md disabled:opacity-50 bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
               >
                 Submit
               </button>

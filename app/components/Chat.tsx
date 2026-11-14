@@ -6,11 +6,13 @@ import type { Message } from "../../lib/events";
 type Props = {
   messages: Message[];
   onSend: (text: string, images: string[]) => void;
+  /** Changes whenever new content appears, to trigger auto-scroll. */
+  scrollKey: string;
   /** Cards rendered after the messages (checklist, submit, confirmation). */
   children?: ReactNode;
 };
 
-export default function Chat({ messages, onSend, children }: Props) {
+export default function Chat({ messages, onSend, scrollKey, children }: Props) {
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -18,7 +20,7 @@ export default function Chat({ messages, onSend, children }: Props) {
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, children]);
+  }, [scrollKey]);
 
   const send = () => {
     if (!text.trim() && images.length === 0) return;
@@ -71,7 +73,10 @@ export default function Chat({ messages, onSend, children }: Props) {
                 <button
                   type="button"
                   aria-label="Remove image"
-                  onClick={() => setImages((xs) => xs.filter((x) => x !== src))}
+                  onClick={() => {
+                    URL.revokeObjectURL(src);
+                    setImages((xs) => xs.filter((x) => x !== src));
+                  }}
                   className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-zinc-800 text-xs text-white"
                 >
                   ×

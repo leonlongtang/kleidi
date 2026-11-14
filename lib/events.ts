@@ -67,6 +67,10 @@ export function applyEvent(state: UiState, event: KleidiEvent): UiState {
   }
 }
 
+export function addUserMessage(state: UiState, text: string, images: string[] = []): UiState {
+  return { ...state, messages: [...state.messages, { from: "user", text, images }] };
+}
+
 const DEMO_ICS = [
   "BEGIN:VCALENDAR",
   "VERSION:2.0",

@@ -26,8 +26,12 @@ export default function StepPanel({ steps, latestStepId }: Props) {
               key={s.id}
               ref={isLatest ? latest : undefined}
               className={`rounded-md border p-2 text-sm transition-colors ${
-                isLatest ? "border-blue-400 bg-blue-50 shadow-sm" : "border-zinc-200"
-              } ${s.status === "error" ? "border-red-300 bg-red-50" : ""}`}
+                s.status === "error"
+                  ? "border-red-300 bg-red-50"
+                  : isLatest
+                    ? "border-blue-400 bg-blue-50"
+                    : "border-zinc-200"
+              } ${isLatest ? "shadow-sm" : ""}`}
             >
               <div className="flex items-center gap-2 text-xs text-zinc-500">
                 <span className={s.status === "running" ? "animate-pulse" : ""}>{statusIcon[s.status]}</span>
