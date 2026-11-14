@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { nextWorkingDays, bookingGrid, slotId, applicationNumber, formatDateEl } from "./slots.ts";
+import { nextWorkingDays, bookingGrid, slotId, applicationNumber, formatDateEl, toYmd } from "./slots.ts";
 
 const d = (s: string) => new Date(`${s}T12:00:00`);
-const iso = (x: Date) => x.toISOString().slice(0, 10);
+const iso = toYmd; // local date, like the page (toISOString is UTC and shifts days east of Greenwich)
 
 test("next working days skip weekends and start tomorrow", () => {
   // Friday 2026-11-13 → Mon..Fri of the following week
