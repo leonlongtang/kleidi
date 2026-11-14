@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(~/.ssh/**)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "cd \"$CLAUDE_PROJECT_DIR\" && node .claude/hooks/check.mjs", "timeout": 300 }
+        ]
+      }
+    ]
+  }
+}
